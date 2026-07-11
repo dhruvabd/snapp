@@ -23,7 +23,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unzip
 
-      - name: Extract ZIP
+      - name: Extract Project ZIP
         shell: bash
         run: |
           unzip -o socialscienceapp.zip
@@ -37,15 +37,17 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Make Gradle Executable
-        run: chmod +x gradlew
-
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Make Gradle Executable
+        run: chmod +x gradlew
+
       - name: Generate Debug Keystore
+        shell: bash
         run: |
           mkdir -p ~/.android
+
           keytool -genkeypair \
             -v \
             -storetype PKCS12 \
@@ -59,7 +61,7 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew assembleRelease --stacktrace --warning-mode all
 
       - name: Sign APK
         shell: bash
@@ -81,7 +83,7 @@ jobs:
             --out signed/app-release.apk \
             signed/app-release-aligned.apk
 
-      - name: Verify APK Signature
+      - name: Verify APK
         shell: bash
         run: |
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -1)
@@ -93,3 +95,13 @@ jobs:
           name: signed-release-apk
           path: signed/app-release.apk
           if-no-files-found: error
+
+      - name: Upload Build Logs (Always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-logs
+          path: |
+            **/build/reports/**
+            **/build/outputs/logs/**
+            **/*.log
